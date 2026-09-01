@@ -3,19 +3,16 @@
     rel="stylesheet">
 <link href="https://huntingstats378.github.io/HuntingStats378/main/assets/ess/odometer.css" rel="stylesheet">
 <script src="https://huntingstats378.github.io/main/assets/ess/odometer.js"></script>
-
 <body>
     <div class="main" id="main" style="margin-top: 7.5px; display: grid; grid-template-columns: repeat(5, 1fr);"></div>
     <script>
         const searchParams = new URLSearchParams(window.location.search);
-        const server = searchParams.get("id") || "1415768949651669024";
+        const server = searchParams.get("id") || "1150096734576451614";
         const peg = parseInt(searchParams.get("page") || 1, 10);
         const page = Math.ceil(peg * 0.5); // API page (100 users)
         const padRanks = searchParams.get("pad") === "true"; // toggle via ?pad=true
         const theme = searchParams.get("theme") || "light"; // default light
         const fontweight = searchParams.get("fontweight") || "400"; // default
-        const currentUrl = window.location.href; // full page URL
-        new WebSocket(`wss://huntingstats378.onrender.com/clients?url=${encodeURIComponent(currentUrl)}`);
 
         // Apply light or dark mode
         function applyThemes() {
@@ -33,7 +30,7 @@
 
         applyThemes();
 
-        function padZero(number) {
+        function padZero(number) { 
             return String(number).padStart(3, '0');
         }
 
@@ -74,67 +71,26 @@
 
         createCards();
 
-        // Accurate Arcane XP logic using xpOptions from the API
-        function requiredXPToNextLevel(level, xpOptions = {}) {
-            const multiplier = xpOptions?.multiplier ?? 1;
-            const curve = (xpOptions?.curve ?? "linear").toLowerCase();
-            const lvl = Math.max(0, Math.floor(level));
-
-            switch (curve) {
-                case "exponential":
-                    // Arcane: 5*level^2 + 50*level + 75
-                    return Math.round(multiplier * (5 * lvl * lvl + 50 * lvl + 75));
-
-                case "linear":
-                case "none": // alias
-                    // Arcane: (level * 100) + 75
-                    return Math.round(multiplier * (lvl * 100 + 75));
-
-                case "constant":
-                    // Arcane flat/constant = 1000
-                    return Math.round(multiplier * 1000);
-
-                default:
-                    throw new Error(`Unsupported XP curve: ${curve}`);
-            }
-        }
-        
-        function totalXPToLevel(level, xpOptions) {
-            if (level === 0) return 75;
-            let total = 0;
-            for (let i = 1; i < level; i++) {
-                total += requiredXPToNextLevel(i, xpOptions);
-            }
-            return total + 75;
-        }
-
-        function getTotalXP(level, currentXP, xpOptions) {
-            if (level === 0) currentXP = 0;
-            return Math.round(totalXPToLevel(level, xpOptions) + currentXP);
-        }
-
-        function getAvatarURL(user) {
-            if (!user.avatar || !user.id) return "./default.png"; // fallback
-            const isGif = user.avatar.startsWith("a_");
+        function getAvatarURL(userId, avatarHash) {
+            if (!avatarHash || !userId) return "./default.png";
+            const isGif = avatarHash.startsWith("a_");
             const extension = isGif ? "gif" : "png";
-            return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${extension}`;
+            return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${extension}`;
         }
 
         async function fetchAndUpdate() {
             try {
                 const response = await fetch(
-                    `https://huntingstats378.onrender.com/api/discord/arcane/top100/${server}`
+                    `https://huntingstats378.onrender.com/corsproxy?url=https://api.lurkr.gg/v2/levels/${server}?page=${String(page)}`
                 );
                 const data = await response.json();
                 const users = data.levels; // 100 users per API page
-                const xpOptions = data.xpOptions;
 
                 const offset = (peg % 2 === 1) ? 0 : 50;
                 const selectedUsers = users.slice(offset, offset + 50);
 
                 selectedUsers.forEach((userData, htmlIndex) => {
-                    const rank = offset + htmlIndex + 1; // +1 so ranks start at 1, not 0
-                    setTimeout(() => updatePeg(htmlIndex, userData, xpOptions, rank), 200 * htmlIndex);
+                    setTimeout(() => updatePeg(htmlIndex, userData), 200 * htmlIndex);
                 });
 
             } catch (err) {
@@ -142,15 +98,17 @@
             }
         }
 
-        function updatePeg(index, userData, xpOptions, rank) {
+        function updatePeg(index, userData) {
             const nameEl = document.getElementById(`name_${index}`);
             const countEl = document.getElementById(`count_${index}`);
             const imageEl = document.getElementById(`image_${index}`);
             const rankEl = document.getElementById(`num_${index}`);
 
-            const username = userData.username.replace(/^@/, "");
-            const xp = getTotalXP(userData.level, userData.xp, xpOptions).toLocaleString();
-            const userId = userData.id;
+            const username = userData.user.username;
+            const xp = userData.xp;
+            const avatar = userData.user.avatar;
+            const userId = userData.userId;
+            let rank = userData.rank;
 
             rank = padRanks ? padZero(rank) : cadZero(rank);
 
@@ -158,7 +116,7 @@
             if (countEl) countEl.innerHTML = xp;
             if (rankEl) rankEl.innerHTML = rank;
             if (imageEl) {
-                const avatarURL = getAvatarURL(userData);
+                const avatarURL = getAvatarURL(userId, avatar);
                 imageEl.src = avatarURL;
                 imageEl.onerror = () => {
                     imageEl.onerror = null;
@@ -168,6 +126,6 @@
         }
 
         fetchAndUpdate();
-        setInterval(fetchAndUpdate, 30000);
+        setInterval(fetchAndUpdate, 10000);
     </script>
 </body>

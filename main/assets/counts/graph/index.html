@@ -1,7 +1,8 @@
 <link id="font" href="https://fonts.googleapis.com/css?family=Roboto:100,200,300,400,500,600,700,800&display=swap" rel="stylesheet">
 <link rel=stylesheet href="https://lcedit.com/odometer/odometer.css">
-<script src="https://huntingstats378.github.io/HuntingStats378/main/assets/ess/highstock.js"></script>
 <script src="https://lcedit.com/odometer/odometer.js"></script>
+<script src="https://huntingstats378.github.io/main/assets/js/fetch-requests.js"></script>
+<script src="https://huntingstats378.github.io/main/assets/ess/highstock.js"></script>
 
 <body>
     <div id="chart" class="chart"></div>
@@ -50,16 +51,17 @@ for (const [key, value] of urlParams.entries()) {
 }
 
 // Fetch the values directly from `urlParams` using `.get()`
-var axis = urlParams.get("axis") || false;
 var bg = urlParams.get("background") || "black";
-var fc = urlParams.get("fccolor") || "white";
+var fc = urlParams.get("fontcolor") || "white";
 var fa = urlParams.get("fontalign") || "center";
 var id = urlParams.get("id") || "UClOyuxZvQkoHoIn15kNbkUw";
+var platform = urlParams.get("platform") || "youtube";
+var type = urlParams.get("type") || "channel";
+var studio = urlParams.get("studio") || false;
 var font = urlParams.get("font") || "Roboto";
 var sizee = urlParams.get("size") || "50";
 var fw = urlParams.get("fontweight") || "400";
 var counter = urlParams.get("counter") || 0;
-var studio = urlParams.get("studio") || false;
 var animation = urlParams.get("animation") || 0;
 var est = urlParams.get("est") || 0;
 var up = urlParams.get("up") || fc;
@@ -67,7 +69,9 @@ var down = urlParams.get("down") || fc;
 var format = urlParams.get("format") || 0;
 var clock = urlParams.get("clock") || false;
 var duration = urlParams.get("duration") || 2;
+var update = urlParams.get("update") || 2;
 var est = urlParams.get("est") || 0;
+var goal = urlParams.get("goal") || 0;
 
 // Validate and handle font size
 function validateSize(input) {
@@ -91,32 +95,33 @@ function durationNumber(num) {
     // If the number doesn't start with '0', return the number as it is
     return num;
 }
+    
+function padZero(number) {
+    return String(number).padStart(2, '0');
+}
 
-setInterval(() => {
-if (studio == true) {
-    fetch(`https://corsproxy.io/?https://studio.nia-statistics.com/api/channel/${id}`)
-        .then((res) => res.json())
-        .then((data) => {
-            document.getElementById("count").innerHTML = data.channels.counts[counter].count;
-        });
-}
-if (est === 0) {
-    fetch(`https://mixerno.space/api/youtube-channel-counter/user/${id}`)
-        .then((res) => res.json())
-        .then((data) => {
+setInterval(async () => {
+    let str = "fetch" + platform + type;
+        try {
+            let data = await window[str](id); // Ensure async fetch
+            
+            console.log("Raw Data:", data);
+
+            if (!data) {
+                console.error("No data received.");
+                return;
+            }
+
+            let count = studio === true ? goal - data.studio : goal - data.counts[counter];
+
+            console.log("Calculated Count:", count);
             if (chart.series[0].points.length == 1500) chart.series[0].data[0].remove();
-                chart.series[0].addPoint([Date.now(), data.counts[counter].count])
-        });
-}
-if (est === 1) {
-    fetch(`https://mixerno.space/api/youtube-channel-counter/user/${id}`)
-        .then((res) => res.json())
-        .then((data) => {
-            if (chart.series[0].points.length == 1500) chart.series[0].data[0].remove();
-                chart.series[0].addPoint([Date.now(), data.counts[counter].count])
-            });
-}
-    }, 2000);
+                chart.series[0].addPoint([Date.now(), Math.floor(Math.abs(count))])
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    }, (durationNumber(update) * 1000));
  
     if (axis === false) {
     var textBright = 'transparent'
