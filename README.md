@@ -1,1 +1,1 @@
-yo this is archives of original for purposes!
+yo this is archive of original for purpose!
